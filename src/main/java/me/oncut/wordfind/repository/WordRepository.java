@@ -12,4 +12,6 @@ public interface WordRepository extends JpaRepository<Word, Long> {
     List<Word> getByDictionaryAndLengthLessThanEqualOrderByLengthDesc(Dictionary dictionary, Integer length);
     List<Word> getByDictionaryAndLengthEqualsOrderByLengthDesc(Dictionary dictionary, Integer length);
 
+    long count();
+
 }

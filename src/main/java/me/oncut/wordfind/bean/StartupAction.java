@@ -1,5 +1,8 @@
 package me.oncut.wordfind.bean;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -29,22 +32,22 @@ public class StartupAction implements ApplicationListener<ContextRefreshedEvent>
 
     @Override
     public void onApplicationEvent(final ContextRefreshedEvent event) {
-        try {
-            loadWordsToDatabase();
-        } catch (Exception e) {
-            throw new DictionaryException("Dictionary read error", e);
-        }
+        loadWordsToDatabase();
     }
 
-    private void loadWordsToDatabase() throws Exception {
+    private void loadWordsToDatabase() {
         final List<Dictionary> dictionaries = dictionaryRepository.findAll();
         log.info(String.format("Found %d dictionaries", dictionaries.size()));
         for (final Dictionary dictionary : dictionaries) {
-            final Resource resource = resourceLoader.getResource(String.format("classpath:dictionaries/%s", dictionary.getDictionaryFileName()));
-            List<String> words = Files.readAllLines(Paths.get(resource.getURI()), StandardCharsets.UTF_8);
-            log.info(String.format("Dictionary for %s language has %d words", dictionary.getEnglishLanguageName(), words.size()));
-            for (final String word : words) {
-                wordRepository.save(Word.builder().dictionary(dictionary).name(word).length(word.length()).build());
+            try (InputStream in = getClass().getResourceAsStream(String.format("/dictionaries/%s", dictionary.getDictionaryFileName()));
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+                String word;
+                while ((word = reader.readLine()) != null) {
+                    wordRepository.save(Word.builder().dictionary(dictionary).name(word).length(word.length()).build());
+                }
+                log.info(String.format("Dictionary for %s language has %d words", dictionary.getEnglishLanguageName(), wordRepository.count()));
+            } catch (Exception e) {
+                throw new DictionaryException("Dictionary read error", e);
             }
         }
     }
